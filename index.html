@@ -1,0 +1,257 @@
+<!doctype html>
+<title>Kahare</title>
+<meta charset='utf-8' />
+<link rel='icon' href='favicon.ico' />
+
+<style>
+	* {padding: 0; margin: 0; background: #ffffff; outline: none; resize: none; text-decoration: none; border: none;}
+
+	.cursor_pointer {cursor: pointer;}
+
+	section.information {margin: auto;}
+
+	section.information div.logotipo {text-align: center;}
+	section.information div.logotipo span.logotipo {font-family: logotipo;}
+
+	section.information div.information span {display: block;}
+	section.information div.information span.cnpj:before {content: 'CNPJ: ';}
+	section.information div.information span.hour:before {content: 'Hora: ';}
+	section.information div.information span.date:before {content: 'Data: ';}
+
+	section.information div.inputs input {display: inline;}
+	section.information div.inputs input.totais {text-align: right; position: relative;}
+	section.information div.inputs span.totais {position: relative;}
+
+	@media not print {
+		* {font-family: segoe ui;}
+
+		section.information {width: 580px;}
+
+		section.information div.logotipo span.logotipo {font-size: 5em;}
+
+		section.information div.information {padding-bottom: 10px;}
+		section.information div.information span {left: 5px; position: relative; margin-bottom: 3px;}
+
+		section.information div.inputs input {border-bottom: 1px solid #333333; font-size: 1em; width: 24%; padding: 10px 0px;}
+		section.information div.inputs input.cod {width: 60px; text-align: center;}
+		section.information div.inputs input.desc {width: 315px; text-align: left;}
+		section.information div.inputs input.quant {width: 90px; text-align: right;}
+		section.information div.inputs input.val {width: 100px; text-align: right;}
+		section.information div.inputs input.totais {float: right;}
+		section.information div.inputs input.totais.itens {width: 90px; right: 115px;}
+		section.information div.inputs input.totais.soma {width: 100px; left: 75px;}
+
+		section.information div.inputs div.button {display: inline; margin-right: 11px; margin-left: 5px;}
+		section.information div.inputs div.itens span.remove {position: relative; left: 10px; top: 10px; transform: rotate(45deg); float: right;}
+
+		section.information div.inputs span.totais {top: 20px; left: 6px;}
+	}
+	@media print {
+		* {font-family: monospace;}
+
+		.display_none {display: none !important;}
+
+		section.information {width: 68mm;}
+
+		section.information div.logotipo {margin: 0.3cm 0cm;}
+		section.information div.logotipo span.logotipo {font-size: 1cm;}
+
+		section.information div.information {font-size: 0.4cm; margin-bottom: 0.3cm;}
+
+		section.information div.inputs input {font-size: 0.4cm;}
+		section.information div.inputs input.cod {width: 22%;}
+		section.information div.inputs input.desc {width: 78%;}
+		section.information div.inputs input.quant {width: 22%; border-bottom: 1px solid #000000; padding-bottom: 0.2cm;}
+		section.information div.inputs input.val {width: 78%; border-bottom: 1px solid #000000; padding-bottom: 0.2cm; text-align: right;}
+		section.information div.inputs input.totais {top: 0.4cm;}
+		section.information div.inputs input.totais.itens {left: 0.2cm; text-align: left; width: 22%;}
+		section.information div.inputs input.totais.soma {right: 0cm; float: right; width: 39%;}
+
+		section.information div.inputs span.totais {top: 0.4cm;}
+	}
+
+	@font-face {
+		font-family: 'logotipo';
+		src: url('logotipo.woff2') format('woff2'), url('logotipo.woff') format('woff');
+		font-weight: normal;
+		font-style: normal; }
+</style>
+
+<script src='jquery_1.8.3.js'></script>
+<script src='jquery.maskMoney.min.js'></script>
+
+<section class='information'>
+	<div class='logotipo'>
+		<span class='logotipo'>Kahare</span>
+	</div>
+
+	<div class='information'>
+		<span class='cnpj'>26.740.110/0001-83</span>
+		<span class='hour'></span>
+		<span class='date'></span>
+	</div>
+
+	<div class='inputs'>
+		<div class='add button cursor_pointer display_none'>Novo</div>
+		<div class='print button cursor_pointer display_none'>Imprimir</div>
+		<div class='reset button cursor_pointer display_none'>Resetar</div>
+		<div class='itens'></div>
+		<span class="totais">Total: </span>
+		<input id='itens_total' class='totais itens' value='0' readonly />
+		<input id='itens_soma' class='totais soma' value='0' readonly />
+	</div>
+</section>
+
+<script>
+	$(document).ready(function() {
+		startTime();
+		new_input();
+
+		$('div.add').on('click', function() { });
+
+		$('div.print').on('click', function() {
+			window.print(); });
+
+		$('div.reset').on('click', function() {
+			location.reload(); });
+
+		$(document).on('keyup', function(ctrlP) {
+			if(ctrlP.which == 17) pressedCtrl = false; });
+		$(document).on('keydown', function(ctrlP) {
+			if(ctrlP.which == 17) pressedCtrl = true;
+			if(ctrlP.keyCode == 80 && pressedCtrl == true) {
+				window.print(); } });
+
+		$(document).on('keydown', function(esc) {
+			if(esc.which == 27) {
+				auto_soma_unit_valor();
+				prep_action_calc(); } });
+
+		$(document).on('keydown', 'input', function(enter) {
+			if(enter.which == 13) {
+				$(this).next('input').focus(); } });
+
+		$(document).on('keydown', 'input.val', function(enter) {
+			if(enter.which == 13) {
+				prep_new_input(); } });
+
+		$(document).on('keydown', 'input.val', function(tab) {
+			if(tab.which == 9) {
+				event.preventDefault();
+				prep_new_input(); } });
+
+		function prep_new_input() {
+			auto_soma_unit_valor();
+			$(this).blur();
+			event.preventDefault();
+			$('input').first().focus();
+			new_input(); }
+
+		function prep_calc_navigation() {
+			auto_soma_unit_valor();
+			$('input:eq(3):visible').blur(); } });
+
+/* função que ativa o relógio */
+	function startTime() {
+		var today = new Date();
+		$('.hour').html(checkTime(today.getHours()) + ":" + checkTime(today.getMinutes()) + ":" + checkTime(today.getSeconds()));
+		$('.date').html(checkTime(today.getDate()) + "/" + checkTime(today.getMonth() + 1) + "/" + today.getFullYear());
+		setTimeout('startTime()', 500); }
+	function checkTime(i) { if (i < 10) { i = "0" + i; } return i; }
+/* função que ativa o relógio */
+
+/* prepara ações */
+	function prep_action_print() {
+		prep_action_calc();
+		window.print(); }
+
+	function prep_action_calc() {
+		$('input').first().focus();
+		recalcular_totais('itens_total');
+		ajustarInputOn('itens_total');
+		maskMoney(); }
+/* prepara ações */
+
+/* função que insere e remove cadeia de inputs */
+	var inputnew = 0;
+	function new_input() {
+		$('<x>'
+			+ '<input class="cod" placeholder="Código" />'
+			+ '<input class="desc" placeholder="Descrição" />'
+			+ '<input class="quant" placeholder="Quantidade" />'
+			+ '<input class="val" placeholder="Valor" />'
+			+ '<span class="remove cursor_pointer display_none">+</span>'
+		+ '</x>').prependTo($('div.itens'));
+		inputnew++;
+		prep_action_calc(); }
+
+	$('span.remove').live('click', function() {
+		if(inputnew > 1) {
+			$(this).parents('x').remove();
+		inputnew--; }
+		prep_action_calc(); });
+/* função que insere e remove cadeia de inputs */
+
+/* conta quantidade de itens unitários */
+	function contarOn(i) {
+		somar_quantidade();
+		auto_soma_total_valor();
+		return document.getElementById(i); }
+	function recalcular_totais(i) {
+		contarOn(i).value = parseInt(contarOn(i).value); }
+/* conta quantidade de itens unitários */
+
+/* soma a quantidade de todos os itens no input.quant */
+	function somar_quantidade() {
+		var rscnInputs = $('input.quant').length;
+		var conta_inputs = 0;
+		$('input.quant').each(function(i, item) {
+			var quantItem = parseFloat($(item).val());
+			if(!isNaN(quantItem))
+				conta_inputs += parseFloat($(item).val()); });
+		$('input.totais.itens').val(conta_inputs); }
+/* soma a quantidade de todos os itens no input.quant */
+
+/* soma valor unitário no input.val */
+	function auto_soma_unit_valor() {
+		$('input.val').blur(function() {
+			$(this).val($(this).val().replace(',','.').replace(/[^0-9\.]/g,''));
+			var a = Number($('input.quant').val());
+			var b = Number($('input.val').val());
+			if((a != '') && (b != '')) {
+				$(this).val(parseFloat(a * b).toFixed(2)); } }); }
+/* soma valor unitário no input.val */
+
+/* Soma todos os valores no input.val */
+	function auto_soma_total_valor() {
+		var rscnInputs = $('input.val').length;
+		var soma_inputs = 0;
+		$('input.val').each(function(i, item) {
+			$(this).val($(this).val().replace(',','.').replace(/[^0-9\.]/g,''));
+			var valorItem = parseFloat($(item).val());
+			if(!isNaN(valorItem))
+				soma_inputs += parseFloat($(item).val()); });
+		$('input.totais.soma').val(parseFloat(soma_inputs).toFixed(2).replace('.',',')); }
+/* Soma todos os valores no input.val */
+
+/* ajusta qualquer input para centena */
+	function ajustarInput(str) {
+		var adicionar = 3 - str.length;
+		for (var i = 0; i < adicionar; i++) str = '0' + str;
+		return str.slice(0, 2) + '' + str.slice(-1); }
+
+	function ajustarInputOn(i) {
+		var input = document.getElementById(i);
+		input.value = ajustarInput(input.value); }
+/* ajusta qualquer input para centena */
+
+/* plugin de terceiro para formatar em valores */
+	function maskMoney() {
+		$('input.cod').maskMoney({thousands: '', decimal: '', precision: 4})
+		$('input.quant, input.totais.itens').maskMoney({thousands: '', decimal: '', precision: 2})
+		$('input.val, input.totais.soma').maskMoney({prefix:'R$ ', thousands: '.', decimal: ',', affixesStay: true})
+		.maskMoney('mask'); }
+/* plugin de terceiro para formatar em valores */
+</script>
+
+<meta dkteclive='T♥R' />
